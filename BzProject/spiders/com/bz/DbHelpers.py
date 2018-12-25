@@ -20,6 +20,7 @@ class DbHelpers(object):
 
     #执行新增动作
     def executeSql(self,sql,param=None):
+        print(sql)
         conn=self.getConnection()
         cursor=conn.cursor()
         if param ==None:
@@ -27,6 +28,7 @@ class DbHelpers(object):
         else:
             cursor.execute(sql,param)
         id=cursor.lastrowid
+        conn.commit()
         cursor.close()
         conn.close()
         return id
@@ -37,11 +39,22 @@ class DbHelpers(object):
         r = cur.fetchall()
         cur.close()
         return r
+    #查询单个对象
+    def queryOne(self,sql):
+        cur =self.getConnection().cursor()
+        rw=cur.execute(sql)
+        rw=cur.fetchone()
+        return rw;
 
 
 if __name__=="__main__":
     dbh=DbHelpers()
-    res=DbHelpers.queryAll(dbh,"select * from epview;")
+    # res=DbHelpers.queryAll(dbh,"select * from epview;")
+    res=dbh.queryOne("select * from userinfo where username='wuyl1'")
+    if res  is not None:
+        print("不为空")
+    else:
+        print("当前用户不存在")
     print(res)
 
 
