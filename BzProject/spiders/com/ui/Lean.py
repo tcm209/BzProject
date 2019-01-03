@@ -1,79 +1,34 @@
-# # -*- coding: utf-8 -*-
-# import tkinter as tk#导入tkinter
+# # coding=utf-8
+# from lxml import etree
+# from multiprocessing.dummy import Pool as ThreadPool
+# import requests
+# import re
+# import sys
+# import r
+# import time
+# reload(sys)
+# sys.setdefaultencoding("utf-8")
+# def spider(url):
+#     print (url)
+#     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36'}
+#     html = requests.get(url, headers=headers) #伪装成浏览器
+#     selector = etree.HTML(html.text) #将网页html变成树结构，用于xpath
+#     content = selector.xpath('//figure[@class="post-image "]') #提取figure标签
+#     for each in content:
+#         tmp = each.xpath('a/img/@src')#把img标签的src属性提取出来
+#         pic = requests.get(tmp[0])#访问图片
+#         print('downloading: ' + tmp[0])
+#         string = re.search('\d+/\d+/(.*?)\\.jpg', str(tmp[0])).group(1) #正则表达式匹配图片名字
+#         fp=open('pic2\\'+string+'.jpg','wb')#放到pic2文件夹内，要自己创建
+#         fp.write(pic.content)
+#         fp.close
+# if __name__ == '__main__':
+#     pool = ThreadPool(2) #双核电脑
+#     tot_page = []
+#     for i in range(1,11): #提取1到10页的内容
+#         link = 'http://hotpics.cc/page/' + str(i)
+#         tot_page.append(link)
+#     pool.map(spider, tot_page)#多线程工作
+#     pool.close()
+#     pool.join()
 #
-# #创建窗口
-# window=tk.Tk()
-# #设置窗口名称
-# window.title("login")
-# #设置窗口大小
-# window.geometry("600x300")
-# #设置标签
-# var =tk.StringVar()#设置label的text为字符变量 通过函数赋值
-# l=tk.Label(window,textvariable=var,bg="red",font=("Arial",14),width=30,height=2)
-# #放置标签
-# l.pack()
-# #定义一个函数 供button调用
-# on_hit=False
-# def hit_me():
-#     global on_hit
-#     if on_hit==False:
-#         on_hit=True
-#         var.set("you hit me")
-#     else:
-#         on_hit=False
-#         var.set("")
-#
-# #设置button
-# b=tk.Button(window,text="hit me",font=("Arial",12),width=10,height=2,command=hit_me)
-# b.pack()
-# #设置密文
-# e1=tk.Entry(window,show="*",font=("Arial",14))
-# e2=tk.Entry(window,show=None,font=("Arial",14))
-# e1.pack()
-# e2.pack()
-# #
-# e3=tk.Entry(window,show=None)
-# e3.pack()
-# def insert_point():
-#     var=e3.get()
-#     t.insert("insert",var)
-# def insert_end():
-#     var=e3.get()
-#     t.insert("end",var)
-# #创建两个按钮并触发
-# b1=tk.Button(window,text="insert point",width=10,height=3,command=insert_point)
-# b1.pack()
-# b2=tk.Button(window,text="insert end",width=10,height=3,command=insert_end)
-# b2.pack()
-#
-# t=tk.Text(window,height=3)
-# t.pack()
-# #listbox
-# var1=tk.StringVar()#创建变量，用于显示选择的
-# l1=tk.Label(window,bg="green",fg="yellow",font=("Arial",12),width=12,textvariable=var1)
-# l1.pack()
-#
-# #创建点击事件
-# def select_click():
-#     value=lbox.get(lbox.curselection())#获取当前选择的文本
-#     var1.set(value)
-#
-# #创建按钮触发函数
-# b3=tk.Button(window,text="print select",width=15,height=2,command=select_click)
-# b3.pack()
-# #创建listbox为其添加内容
-# var2=tk.StringVar()
-# var2.set((1,2,3,4))
-# #创建listbox
-# lbox=tk.Listbox(window,listvariable=var2)#将var2设置赋值给listbox
-# #创建一个list并将值循环添加到listbox控件中
-# listItems=[11,22,44]
-# for item in listItems:
-#     lbox.insert("end",item)#从最后一个位置添加
-# lbox.insert(1,"first")
-# lbox.insert(2,"second")
-# lbox.delete(2)
-# lbox.pack()
-#
-#
-# window.mainloop()
