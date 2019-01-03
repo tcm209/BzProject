@@ -5,9 +5,14 @@ from scrapy.settings import Settings
 from twisted.internet import reactor
 from BzProject.spiders.com.bz.client.BzClient import BzClient
 from scrapy.crawler import CrawlerProcess
+from scrapy.crawler import CrawlerRunner
 from scrapy.utils.project import get_project_settings
 import os
-
+from scrapy.cmdline import execute
+import time
+import threading
+from subprocess import Popen
+import subprocess
 
 class StartSpider(object):
 
@@ -17,14 +22,19 @@ class StartSpider(object):
         os.environ['SCRAPY_SETTINGS_MODULE'] = 'BzProject.settings'
         setting_module_path = os.environ['SCRAPY_SETTINGS_MODULE']
         settings.setmodule(setting_module_path, priority='project')
-        crawler = CrawlerProcess(settings)
-
+        # runner = CrawlerRunner(settings)
+        # runner.crawl(bzSpilder)
+        # reactor.run()
+        crawler = CrawlerProcess(settings)#多线程时会报错  signal only works in main thread
         crawler.crawl(bzSpilder)
         crawler.start()
-        # log.start(loglevel=log.INFO)
-        reactor.run()
+
+
+    def sbProcess(self):
+        subprocess.Popen("scrapy crawl dk")
 
 if __name__=="__main__":
     ss=StartSpider()
     ss.doCmd()
+    #测试地址 https://search.bilibili.com/all?keyword=Legal%20V&from_source=banner_search&spm_id_from=333.334.b_62616e6e65725f6c696e6b.4
 
