@@ -10,6 +10,7 @@ class DbHelpers(object):
         "user": "root",
         "passwd": "123456",
         "db": "bzhan",
+
     }
     def __init__(self):
         self.spool=PooledDB(pymysql,5,**self.db_config)
@@ -20,7 +21,7 @@ class DbHelpers(object):
 
     #执行新增动作
     def executeSql(self,sql,param=None):
-        print(sql)
+
         conn=self.getConnection()
         cursor=conn.cursor()
         if param ==None:
@@ -32,6 +33,19 @@ class DbHelpers(object):
         cursor.close()
         conn.close()
         return id
+    #批量新增
+    def executeSqlMany(self,sql,param=None):
+        conn = self.getConnection()
+        cursor = conn.cursor()
+        if param == None:
+            cursor.execute(sql)
+        else:
+            cursor.executemany(sql, param)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return id
+
     #查询全部
     def queryAll(self,sql):
         cur = self.getConnection().cursor()
@@ -49,9 +63,10 @@ class DbHelpers(object):
 
 if __name__=="__main__":
     dbh=DbHelpers()
+
     # res=DbHelpers.queryAll(dbh,"select * from epview;")
-    res=dbh.queryOne("select * from userinfo where username='wuyl1'")
-    if res  is not None:
+    res=dbh.queryOne("select * from answer where rpid='70586420'")
+    if res is None:
         print("不为空")
     else:
         print("当前用户不存在")
