@@ -253,7 +253,7 @@ class BzClient(scrapy.Spider):
         dataHot = dataJSON['data']['hots']
         dataPage = dataJSON['data']['page']
         if data is not None:
-            arr = self.bzUtils.getReplys(dataHot)
+            arr = self.bzUtils.getReplys(data)
             print(arr)
             arrLen = len(arr)
             if arrLen != 0:

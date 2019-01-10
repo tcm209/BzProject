@@ -142,11 +142,12 @@ class UILogin(object):
         pygame.mixer.init()
 
         if not pygame.mixer.music.get_busy():
-            playMusic = r"E:\\Pythonwork\\source\\music\\dyht.Ogg"
+            playMusic = r"E:\\Pythonwork\\source\\music\\AS.wav"
+
             pygame.mixer.music.load(playMusic)
             pygame.mixer.music.play(1)
-            print
-            'playing...', playMusic
+            print('playing...', playMusic)
+
         else:
             time.sleep(1)
 

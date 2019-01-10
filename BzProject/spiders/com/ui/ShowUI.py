@@ -2,6 +2,7 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import scrolledtext
+from tkinter import Menu
 from BzProject.spiders.com.bz.DbHelpers import DbHelpers
 import io
 import os
@@ -97,6 +98,14 @@ class ShowUI(object):
 
         tk.Button(self.wd,text="开始服务",font=("Arial",8),width=12,command=self.startMyThread).place(x=680,y=self.fistY)
         tk.Button(self.wd, text="停止服务", font=("Arial", 8), width=12,command=self.stopMyThread).place(x=680, y=self.fistY+40)
+        #设置menu
+        menubar=Menu(self.wd)
+        settingmenu=Menu(menubar,tearoff=False)
+        settingmenu.add_command(label='生成词云')
+        settingmenu.add_separator()#添加分割线
+        settingmenu.add_command(label="退出")
+        menubar.add_cascade(label="设置",menu=settingmenu) #创建级联菜单，menu选项指定下一级的菜单是什么
+        self.wd.configure(menu=menubar)
         # 设置爬取选择
         self.wd.mainloop()
 
@@ -255,18 +264,13 @@ class ShowUI(object):
                     self.scr.insert(tk.INSERT, "\n")
                     self.scr.see(tk.INSERT)
             else:
-                sql="SELECT a.id,v.author,v.description,v.play,v.senddate,a.uname,a.sex,a.sign,a.message,a.ctime,a.floor " \
-                    "FROM video v LEFT JOIN answer a on v.aid=a.oid " \
-                    "WHERE uname is NOT NULL and a.id not in (SELECT readid FROM tmp ) "
+                sql="SELECT a.id,v.indexep,a.uname,a.sex,a.sign,a.message,a.ctime,a.floor  FROM epview v LEFT JOIN answer a on v.aid=a.oid WHERE uname is NOT NULL and a.id not in (SELECT readid FROM tmp ) "
                 rw=self.dbHelper.queryOne(sql)
                 if rw is not None:
+                    time_local = time.localtime(int(str(rw[6])))
+                    createBarrageDt = time.strftime("%Y-%m-%d %H:%M:%S", time_local)  # 发送弹幕时间
                     rwid = rw[0]
-                    txt = "作者：" + rw[1] + \
-                          "\n播放数：" + str(rw[3]) + \
-                          "\n内容：" + rw[2] + \
-                          "\n评论人：" + rw[5]+"\t性别：" +rw[6] + \
-                          "\n评论内容：" + rw[8] + \
-                          "\n评论时间：" + str(rw[9]) + "\t楼层：" + str(rw[10])
+                    txt = "第几集：" + rw[1] +  "评论内容：" + rw[5] + "\n评论时间：" + createBarrageDt + "\t楼层：" + str(rw[7])
 
                     updsql = "Insert into tmp(readid)values('" + str(rwid) + "')"
                     self.dbHelper.executeSql(updsql)

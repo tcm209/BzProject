@@ -201,7 +201,7 @@ class BzClientUtils(object):
         if epNum != 0:
             self.dbHelper.executeSqlMany(epSql, epArr)
         else:
-            print("不存在")
+            self.writeLog("方法 movieDetails 不存在")
 
         return self.oidArr,self.cidArr
 
@@ -221,10 +221,10 @@ class BzClientUtils(object):
         styles = data['style']  # 类型
         style = ','.join(str(i) for i in styles)
         title = data['title']  # 剧名
-        if avType=="电影":
+        if avType == "电影":
             total_ep = ""  # 总多少集
         else:
-            total_ep=data['total_ep']
+            total_ep = data['total_ep']
 
         paras.append(actors)
         paras.append(alias)
@@ -368,13 +368,11 @@ class BzClientUtils(object):
         else:
             pageAcount = p2
 
-        self.writeLog("总页数" + str(acount) + "count：" + str(pageCount) + "一页多少：" + str(pageSize) + " 当前页码：" + str(
-            pageNum) + "总页码" + str(pageAcount))
+        self.writeLog("getReplyPageCount 总页数" + str(acount) + "count：" + str(pageCount) + "一页多少：" + str(pageSize) + " 当前页码：" + str(pageNum) + "总页码" + str(pageAcount))
         return pageAcount
 
     # 读取视频播放页面评论
     def getReplys(self, data):
-
         # 读取内容前清空数组
         del self.answerArr[:]
         del self.nextArr[:]
@@ -384,10 +382,8 @@ class BzClientUtils(object):
                   "rcount,device,message,displayRank,avatar,current_level,uname,rank,sex,sign)" \
                   "values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
             self.dbHelper.executeSqlMany(sql, self.answerArr)
-
         else:
-            self.writeLog("数组为空，不执行新增")
-
+            self.writeLog("getReplys 数组为空，不执行新增")
         return self.nextArr
 
     # 公共读取方法
@@ -401,11 +397,11 @@ class BzClientUtils(object):
                     self.answerArr.append(params)
 
             if replies is None:
-                self.writeLog("当前repliesw为空  不执行写入txt操作")
+                self.writeLog("commonMethod当前repliesw为空  不执行写入txt操作")
             else:
-                self.writeLog("replies不为空")
+                self.writeLog("commonMethod replies不为空")
                 j = len(replies)
-                self.writeLog("回复数量：" + str(j))
+                self.writeLog("commonMethod 回复数量：" + str(j))
                 self.commonMethod(replies)
     # 读取评论
     def readDataDetails(self, obj):
@@ -454,13 +450,13 @@ class BzClientUtils(object):
             params.append(sex)
             params.append(sign)
         else:
-            print("当前object为空")
+            self.writeLog("readDataDetails当前object为空")
 
-        logTxt = "姓名：" + uname + " rpid：" + str(rpid) + " 回复内容：" + message + "\n"
-        self.writeLog(logTxt)
+        # logTxt = "姓名：" + uname + " rpid：" + str(rpid) + " 回复内容：" + message + "\n"
+        # self.writeLog(logTxt)
         # 默认评论下讨论只显示前3条
         if rcount > 3:
-            print("rowcoutn  是否大于3")
+            self.writeLog("readDataDetails rowcoutn  是否大于3")
             self.readReplyChilds(rcount, oid, rpid)
         return params
 
@@ -478,17 +474,17 @@ class BzClientUtils(object):
                 pg = pnum + 1
             else:
                 pg = pg + 1
-                self.writeLog("相互评论总回复：" + str(pg))
+                self.writeLog("readReplyChilds 相互评论总回复：" + str(pg))
             for i in range(1, pg):
 
                 tarRepliesURL = "https://api.bilibili.com/x/v2/reply/reply?pn="+str(i)+"&type=1&oid=" + str(oid) + "&ps=10&root=" + str(rpid) + ""
-                self.writeLog("相互评论："+tarRepliesURL)
+                self.writeLog("readReplyChilds 相互评论："+tarRepliesURL)
                 self.nextArr.append(tarRepliesURL)
 
         if len(self.nextArr) == 0:
-            self.writeLog("评论下的相互回复为空，不执行再次读取")
+            self.writeLog("readReplyChilds 评论下的相互回复为空，不执行再次读取")
         else:
-            self.writeLog("评论下的相互回复为不为空，执行再次读取")
+            self.writeLog("readReplyChilds 评论下的相互回复为不为空，执行再次读取")
 
     def writeLog(self, logtxt):
         f = open(r'E:\Pythonwork\BzProject\log\log.txt', 'a+', encoding='utf-8')
