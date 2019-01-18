@@ -13,7 +13,7 @@ class DbHelpers(object):
 
     }
     def __init__(self):
-        self.spool=PooledDB(pymysql,5,**self.db_config)
+        self.spool=PooledDB(pymysql,10,**self.db_config)
     #获取连接
     def getConnection(self):
         conn=self.spool.connection()

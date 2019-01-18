@@ -230,6 +230,11 @@ class WyCloudMusicUtils(object):
         print("总页数"+str(pageNum))
         return pageNum
 
+    #新增数据到歌词表
+    def execute_lyric(self,param):
+        self.dbhelper.executeSql("insert into lyricwy(context)VALUES (%s)",param)
+
+
 
 
 
