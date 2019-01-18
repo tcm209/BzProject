@@ -56,8 +56,8 @@ class WyCloudMusic(scrapy.Spider):
                 #热门推荐评论https://music.163.com/weapi/v1/resource/comments/A_PL_0_2542133934?csrf_token=
                 # yield Request(url=)
         #测试评论获取
-        yield Request(url=self.wyutils.getBaseURL() + "/playlist?id=2608428625", headers=self.wyutils.getDiscoverHeader(),
-                      callback=self.parseHotRecommend, meta={"APL": "2608428625"})
+        yield Request(url=self.wyutils.getBaseURL() + "/playlist?id=924680166", headers=self.wyutils.getDiscoverHeader(),
+                      callback=self.parseHotRecommend, meta={"APL": "924680166"})
         #新碟上架
 
 
@@ -66,6 +66,19 @@ class WyCloudMusic(scrapy.Spider):
         blkXgCat=response.xpath("//div[@id='top-flag']//dl")[1]#新歌
         blkYcCat = response.xpath("//div[@id='top-flag']//dl")[2]#原创
         # self.wyutils.getTop10PlayMessage(blkBsCat)
+        #搜索歌曲'{hlpretag:"<span class="s-fc7">",hlposttag:"</span>",s:"知",type:"1",offset:"0",total:"true",limit:"30",csrf_token:""}'
+
+        #歌词参数"{id:\"26326159\", lv:\"-1\", tv:\"-1\", csrf_token:\"\"}"
+        params = self.wyutils.get_paramsSong(1,"0",1319138680)
+        encSecKey = self.wyutils.get_encSecKeySong()
+        data = {
+            "params": params,
+            "encSecKey": encSecKey
+        }
+        response=requests.post(self.wyutils.getLyricRUL(),headers=self.wyutils.getHeaderSong(), data=data)
+        self.answerLyric(response.content)
+
+
 
     #热门推荐
     def parseHotRecommend(self,response):
@@ -94,13 +107,15 @@ class WyCloudMusic(scrapy.Spider):
         songsElement=response.xpath("//div[@class='g-wrap6']//div[@class='n-songtb']")
         songcount=songsElement.xpath("//div[@class='u-title u-title-1 f-cb']//span[@class='sub s-fc3']//span/text()").extract()[0]#歌曲总数
         playcount=songsElement.xpath("//div[@class='u-title u-title-1 f-cb']//div[@class='more s-fc3']//strong/text()").extract()[0]#播放次数
-        #歌曲列表
+        # 歌曲列表
         liItems = songsElement.xpath("//div[@id='song-list-pre-cache']//ul[@class='f-hide']//li")
-        self.wyutils.getPlayMusicHotRecommend(liItems)
+        playArr = self.wyutils.getPlayMusicHotRecommend(liItems)  # 读取歌曲播放地址
+
         # 读取歌单评论
         urlAPL=self.wyutils.getAPLURLSong(APL)
+        #读取播放列表下的评论
         pagenum=int("1")
-        params = self.wyutils.get_paramsSong(pagenum)
+        params = self.wyutils.get_paramsSong(pagenum,"1",None)
         encSecKey =self.wyutils.get_encSecKeySong()
         data={
             "params": params,
@@ -109,41 +124,55 @@ class WyCloudMusic(scrapy.Spider):
         # yield scrapy.FormRequest(url=urlAPL,method="POST",headers=self.wyutils.getHeaderSong(),formdata=data,callback=self.parseAPLAnswer)
         # yield Request(url=urlAPL,headers=self.wyutils.getHeaderSong(),body=data,callback=self.parseAPLAnswer)
         response=requests.post(url=urlAPL, headers=self.wyutils.getHeaderSong(), data=data)
+        self.csrf_next_page(response,urlAPL)#读取翻页
+
+
+        # #读取具体歌曲的评论
+        for pyURL in playArr:
+            songIDStartNum = int(pyURL.find("id="))
+            songIDLen = len(pyURL)
+            songID = pyURL[songIDStartNum + 3:songIDLen]
+            playsongurl = self.wyutils.get_r_so_url(songID)
+            self.answerCsrf(playsongurl, data)
+
+
+    def answerCsrf(self,url,data):
+        response_r_so = requests.post(url=url, headers=self.wyutils.getHeaderSong(), data=data)
+        self.csrf_next_page(response_r_so,url)
+
+    #读取评论 翻页
+    def csrf_next_page(self,response,urlAPL):
         # 计算总页数
-        pagenum=self.answerAPL(response.content)
-        pagenum=self.wyutils.calcuPageNum(pagenum)
-        if pagenum>1:
+        pagenum = self.answerAPL(response.content,urlAPL)
+        pagenum = self.wyutils.calcuPageNum(pagenum)
+        if pagenum > 1:
             print("大于1页需要分页读取评论")
-            for p in range(2,pagenum+1):#从第二页开始
-                print("当前页数："+str(p)+"\n")
-                pParams = self.wyutils.get_paramsSong(pagenum)
+            for p in range(2, pagenum + 1):  # 从第二页开始
+
+                print("当前页数：" + str(p) + "\n")
+                pParams = self.wyutils.get_paramsSong(p, "1", None)
                 pEncSecKey = self.wyutils.get_encSecKeySong()
-                pdata={
+                pdata = {
                     "params": pParams,
                     "encSecKey": pEncSecKey
                 }
                 responseAnswer = requests.post(url=urlAPL, headers=self.wyutils.getHeaderSong(), data=pdata)
-
-
-
-
-
-
-        # 读取歌曲评论
+                self.answerAPL(responseAnswer.content,urlAPL)
 
     #解析评论response
-    def answerAPL(self,json_text):
+    def answerAPL(self,json_text,playurl):
         j_text = str(json_text, encoding="utf8")
         json_dict = json.loads(j_text)
         code=json_dict['code']
         total=json_dict['total']
         isMusician=json_dict['isMusician']
         more=json_dict['more']
-        moreHot=json_dict['moreHot']
+        #翻页时不存在热评
+        # moreHot=json_dict['moreHot']
         topComments=json_dict['topComments']
         userId=json_dict['userId']
         comments=json_dict['comments']
-        self.wyutils.crsf_comments(comments)
+        self.wyutils.crsf_comments(comments,playurl)
         pagenum=int(total)
         return pagenum
 
@@ -151,10 +180,12 @@ class WyCloudMusic(scrapy.Spider):
 
 
 
-    def parseAPLAnswer(self,response):
-        print(response)
-        # dataAPL=json.loads(response.text)
-        # print(dataAPL['code'])
+    def answerLyric(self,text):
+        j_text = str(text, encoding="utf8")
+        json_dict = json.loads(j_text)
+        code = json_dict['code']
+        lyrictxt = json_dict['lrc']['lyric']
+        print(lyrictxt)
 
 
 
