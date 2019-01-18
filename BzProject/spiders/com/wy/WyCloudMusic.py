@@ -5,6 +5,7 @@ from scrapy.http import Request
 import json
 import base64
 import requests
+from BzProject.spiders.com.RedisTools import RedisTools
 
 class WyCloudMusic(scrapy.Spider):
 
@@ -20,12 +21,41 @@ class WyCloudMusic(scrapy.Spider):
         self.wyutils=WyCloudMusicUtils()
         self.discoverURL=self.wyutils.getDiscoverURL()
         self.header=self.wyutils.getDiscoverHeader()
+        self.r=RedisTools().get_redis()
 
     def start_requests(self):
 
-        return [
-            Request(url= self.wyutils.getDiscoverURL(),headers=self.wyutils.getDiscoverHeader(),callback=self.parseDiscover)
-        ]
+        # 歌词参数"{id:\"26326159\", lv:\"-1\", tv:\"-1\", csrf_token:\"\"}"
+        songid= bytes.decode(self.r.get("keyword"))
+        csrftype= str(bytes.decode(self.r.get("type")))
+        print("查询类型："+csrftype)
+        params = self.wyutils.get_paramsSong(1, str(csrftype), songid)
+        encSecKey = self.wyutils.get_encSecKeySong()
+        data = {
+            "params": params,
+            "encSecKey": encSecKey
+        }
+        # response = requests.post(self.wyutils.getLyricRUL(), headers=self.wyutils.getHeaderSong(), data=data)
+        # self.answerLyric(response.content)#不适应scrapy
+        #
+
+        if csrftype=="1":#评论
+            print("返回执行评论")
+            playsongurl = self.wyutils.get_r_so_url(songid)
+            return [
+                scrapy.FormRequest(playsongurl, headers=self.wyutils.getHeaderSong(), formdata=data,callback=self.parse_csrf_next_page, meta={"url": playsongurl})
+                # Request(url= self.wyutils.getDiscoverURL(),headers=self.wyutils.getDiscoverHeader(),callback=self.parseDiscover)#爬取热门
+            ]
+        elif csrftype=="0":
+            print("执行歌词查询")
+            return [
+                scrapy.FormRequest(self.wyutils.getLyricRUL(), headers=self.wyutils.getHeaderSong(), formdata=data,
+                                   callback=self.parseLyric, meta={"crsftype": csrftype})
+                # Request(url= self.wyutils.getDiscoverURL(),headers=self.wyutils.getDiscoverHeader(),callback=self.parseDiscover)#爬取热门
+            ]
+
+
+
 
     def parseDiscover(self,response):
         hotCat=response.xpath("//div[@class='n-rcmd']//div[@class='v-hd2']/a/text()").extract()[0]#热门推荐
@@ -68,15 +98,7 @@ class WyCloudMusic(scrapy.Spider):
         # self.wyutils.getTop10PlayMessage(blkBsCat)
         #搜索歌曲'{hlpretag:"<span class="s-fc7">",hlposttag:"</span>",s:"知",type:"1",offset:"0",total:"true",limit:"30",csrf_token:""}'
 
-        #歌词参数"{id:\"26326159\", lv:\"-1\", tv:\"-1\", csrf_token:\"\"}"
-        params = self.wyutils.get_paramsSong(1,"0",1319138680)
-        encSecKey = self.wyutils.get_encSecKeySong()
-        data = {
-            "params": params,
-            "encSecKey": encSecKey
-        }
-        response=requests.post(self.wyutils.getLyricRUL(),headers=self.wyutils.getHeaderSong(), data=data)
-        self.answerLyric(response.content)
+
 
 
 
@@ -176,16 +198,71 @@ class WyCloudMusic(scrapy.Spider):
         pagenum=int(total)
         return pagenum
 
-
-
-
-
+    #
+    #
     def answerLyric(self,text):
+        print("测试")
+        print(text)
         j_text = str(text, encoding="utf8")
         json_dict = json.loads(j_text)
         code = json_dict['code']
         lyrictxt = json_dict['lrc']['lyric']
         print(lyrictxt)
+
+    #scrapyform
+    def parse_csrf_next_page(self,response):
+        urlAPL=response.meta['url']
+        # 计算总页数
+        pagenum = self.get_page_num(response.text, urlAPL)
+        pagenum = self.wyutils.calcuPageNum(pagenum)
+        if pagenum > 1:
+            print("大于1页需要分页读取评论")
+            for p in range(2, pagenum + 1):  # 从第二页开始
+
+                print("当前页数：" + str(p) + "\n")
+                pParams = self.wyutils.get_paramsSong(p, "1", None)
+                pEncSecKey = self.wyutils.get_encSecKeySong()
+                pdata = {
+                    "params": pParams,
+                    "encSecKey": pEncSecKey
+                }
+                responseAnswer = requests.post(url=urlAPL, headers=self.wyutils.getHeaderSong(), data=pdata)
+                self.answerAPL(responseAnswer.content, urlAPL)
+
+    def get_page_num(self,j_text,playurl):
+
+        json_dict = json.loads(j_text)
+        code = json_dict['code']
+        total = json_dict['total']
+        isMusician = json_dict['isMusician']
+        more = json_dict['more']
+        # 翻页时不存在热评
+        # moreHot=json_dict['moreHot']
+        topComments = json_dict['topComments']
+        userId = json_dict['userId']
+        comments = json_dict['comments']
+        self.wyutils.crsf_comments(comments, playurl)
+        pagenum = int(total)
+        return pagenum
+
+
+    #scrapy.RequestForm 读取的
+    def parseLyric(self,response):
+        r_text = response.text
+        json_dict = json.loads(r_text)
+        crsftype=response.meta['crsftype']
+        code = str(json_dict['code'])
+        if code=="200":
+            param=[]
+            lyrictxt = json_dict['lrc']['lyric']
+            param.append(lyrictxt)
+            self.wyutils.execute_lyric(param)
+        else:
+            print("不存在歌词")
+
+
+
+
 
 
 

@@ -5,7 +5,14 @@ import datetime
 
 class LogManager(object):
 
+    def __init__(self):
+        print("初始化参数")
 
+
+    def writeLog_main(self, logtxt):
+        self.f = open(r'E:\Pythonwork\BzProject\log\log.txt', 'a+', encoding='utf-8')
+        self.f.write(logtxt)
+        self.f.close()
 
     #写入日志
     def writeLog(self,logTxt):
