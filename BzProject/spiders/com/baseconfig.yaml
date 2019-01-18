@@ -1,15 +1,18 @@
 ---
 # 配置文件请严格遵循yaml语法格式，yaml学习地址 https://ansible-tran.readthedocs.io/en/latest/docs/YAMLSyntax.html
 set:
-  # 出发日期(list)，格式ex：
-  # - 2018-01-06
-  # - 2018-01-07
-  station_dates:
-    - "2019-02-12"
+  # 工具选区
+  # Scrapy
+  # Selenium
+  tool_combox:
+    - "Scrapy"
+    - "Selenium"
 
   # 是否根据时间范围 和 乘车类型 购票
   # 否则将需要手动填写车次
-  is_by_time: False
+  target_web_client:
+    - "QQ空间"
+    - "B站"
 
   # 列车类型: 高铁 G 动车 D 其它火车 O
   train_types: [G,D,O,Z,K]
