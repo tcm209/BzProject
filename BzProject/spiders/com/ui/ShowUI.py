@@ -13,6 +13,8 @@ import time
 import threading
 import tkinter.messagebox
 from BzProject.spiders.com.StartSpider import StartSpider
+from BzProject.spiders.com.RedisTools import RedisTools
+from BzProject.spiders.com.bz.LogManager import LogManager
 
 class ShowUI(object):
 
@@ -31,6 +33,8 @@ class ShowUI(object):
         self.isclick=False
 
         self.startSpider = StartSpider()
+        self.r=RedisTools().get_redis()
+        self.log=LogManager()
 
     def onshowUI(self,*args):
         print(args)
@@ -138,7 +142,6 @@ class ShowUI(object):
                                 self.queryBaseURL())  # self.queryBaseURL() 绑定同时执行方法  self.queryBaseURL只是绑定方法 不立即执行
         else:
             self.baseUrl.set("")
-            self.cbvaluecat.__del__()
             self.cblistcat["values"] = []
 
 
@@ -146,26 +149,50 @@ class ShowUI(object):
     def queryBaseURL(self,*args):
         selectval=self.cblistcat.get()#获取选择的网站类型
         if selectval is not None:
-            rs = self.dbHelper.queryAll("select baseurl from cat where itemname='"+selectval+"'")
-            val=rs[0][0]
-            self.selectchangeURL=val
+            rs = self.dbHelper.queryAll("select baseurl from cat where itemname='" + selectval + "'")
+            val = rs[0][0]
+            self.selectchangeURL = val
             self.baseUrl.set(val)
+            if selectval == "网易云":
+                self.clear_combox(self.videocb)
+                self.videocb["values"]=["歌词","评论"]
+                self.videocb.current(0)
+            elif selectval == "B站":
+                self.clear_combox(self.videocb)
+                self.videocb["values"] = ["影视剧", "小视频"]
+                self.videocb.current(0)
+
+    def clear_combox(self,combox):
+        combox["values"] = []
 
     #显示爬取路径
     def showBaseUrl(self,*args):
         params = []
         val=self.queryVal.get()#获取输入的检索关键字
-        valvideo=self.videoVal.get()
-        catval=self.categoryVal.get()
-        if valvideo=="影视剧":
-            type=0
-        elif valvideo=="小视频":
-            type=1
-        if catval=="评论":
-            barrage=0
-        elif catval=="弹幕":
-            barrage=1
-        if val !="":
+        valvideo = self.videoVal.get()
+        catval = self.categoryVal.get()
+        searchweb=self.cbvaluecat.get()
+        if searchweb == "网易云":
+            client="wy"
+            if valvideo == "歌词":
+                type = 0
+                barrage = 0
+            elif valvideo == "评论":
+                type = 1
+                barrage = 0
+
+        elif searchweb == "B站":
+            client = "dk"
+            if valvideo == "影视剧":
+                type = 0
+            elif valvideo == "小视频":
+                type = 1
+            if catval == "评论":
+                barrage = 0
+            elif catval == "弹幕":
+                barrage = 1
+
+        if val != "":
             oldURL = self.baseUrl.get()  # 原来的url
             newURL = self.selectchangeURL + val
             self.baseUrl.set(newURL)
@@ -177,7 +204,13 @@ class ShowUI(object):
             self.dbHelper.executeSql(sqldel)
             sql="insert into search(search,keyword,type,barrage)VALUES (%s,%s,%s,%s)"
             self.dbHelper.executeSql(sql,params)
-            self.isclick=True
+            #利用redis
+            self.r.set("search", newURL)
+            self.r.set("type", type)
+            self.r.set("keyword", val)
+            self.r.set("barrage", barrage)
+            self.r.set("client", client)
+            self.isclick = True
 
         else:
             tkinter.messagebox.showwarning(title="提示", message="请输入爬虫链接信息")
@@ -189,9 +222,9 @@ class ShowUI(object):
             return
         if self.baseUrl.get()!="":
             if self.queryVal.get()!="":
-
+                docmd=self.r.get("client")
                 # self.startSpider.doCmd()
-                self.startSpider.sbProcess()
+                self.startSpider.sbProcess(docmd)
                 print("开始爬虫")
             else:
                 tkinter.messagebox.showwarning(title="提示", message="请输入检索目标信息")
@@ -252,31 +285,50 @@ class ShowUI(object):
         while self.__running.isSet():
             self.__flag.wait()  # 为True时立即返回, 为False时阻塞直到内部的标识位为True后返回
             catval=self.videocatcb.get()
-            if catval=="弹幕":
-                sel="SELECT t2.id,t1.dynamic,t2.context,t2.createBarrageDt FROM videoview t1 LEFT JOIN barrage t2 on t1.cid=t2.chartid WHERE t2.context!='' and t2.id not in (SELECT readid FROM tmp ) "
-                rw = self.dbHelper.queryOne(sel)
+            targetval=self.queryVal.get()
+            searchweb = self.cbvaluecat.get()
+            if searchweb == "网易云":
+                sql="select id,content,createtime,nickname from answerwy where playurl LIKE '%"+targetval+"%' and id not in (SELECT readid FROM tmp )"
+                rw = self.dbHelper.queryOne(sql)
                 if rw is not None:
-                    rwid = rw[0]
-                    txt="视频："+rw[1]+"弹幕："+rw[2]+"时间："+rw[3]
-                    updsql = "Insert into tmp(readid)values('" + str(rwid) + "')"
-                    self.dbHelper.executeSql(updsql)
-                    self.scr.insert(tk.INSERT, txt + "\n")
-                    self.scr.insert(tk.INSERT, "\n")
-                    self.scr.see(tk.INSERT)
-            else:
-                sql="SELECT a.id,v.indexep,a.uname,a.sex,a.sign,a.message,a.ctime,a.floor  FROM epview v LEFT JOIN answer a on v.aid=a.oid WHERE uname is NOT NULL and a.id not in (SELECT readid FROM tmp ) "
-                rw=self.dbHelper.queryOne(sql)
-                if rw is not None:
-                    time_local = time.localtime(int(str(rw[6])))
-                    createBarrageDt = time.strftime("%Y-%m-%d %H:%M:%S", time_local)  # 发送弹幕时间
-                    rwid = rw[0]
-                    txt = "第几集：" + rw[1] +  "评论内容：" + rw[5] + "\n评论时间：" + createBarrageDt + "\t楼层：" + str(rw[7])
+                    txt = "昵称：" + rw[3]+"创建时间："+rw[2]+"评论内容：" + rw[1]
 
-                    updsql = "Insert into tmp(readid)values('" + str(rwid) + "')"
-                    self.dbHelper.executeSql(updsql)
-                    self.scr.insert(tk.INSERT, txt + "\n")
-                    self.scr.insert(tk.INSERT, "\n")
-                    self.scr.see(tk.INSERT)
+                    rwid=rw[0]
+                    insql="Insert into tmp(readid)values('" + str(rwid) + "')"
+                    self.dbHelper.executeSql(insql)
+                    try:
+                        self.scr.insert(tk.INSERT, txt + "\n")
+                    except Exception as e:
+                        print(e)
+                        self.log.writeLog_main("Error："+str(e)+"\n")
+                        self.log.writeLog_main(txt+"\n")
+
+            elif searchweb=="B站":
+                if catval=="弹幕":
+                    sel="SELECT t2.id,t1.dynamic,t2.context,t2.createBarrageDt FROM videoview t1 LEFT JOIN barrage t2 on t1.cid=t2.chartid WHERE t2.context!='' and t2.id not in (SELECT readid FROM tmp ) "
+                    rw = self.dbHelper.queryOne(sel)
+                    if rw is not None:
+                        rwid = rw[0]
+                        txt="弹幕内容："+rw[2]+"\t发送时间："+rw[3]
+                        updsql = "Insert into tmp(readid)values('" + str(rwid) + "')"
+                        self.dbHelper.executeSql(updsql)
+                        self.scr.insert(tk.INSERT, txt + "\n")
+                        self.scr.insert(tk.INSERT, "\n")
+                        self.scr.see(tk.INSERT)
+                else:
+                    sql="SELECT a.id,v.indexep,a.uname,a.sex,a.sign,a.message,a.ctime,a.floor  FROM epview v LEFT JOIN answer a on v.aid=a.oid WHERE uname is NOT NULL and a.id not in (SELECT readid FROM tmp ) "
+                    rw=self.dbHelper.queryOne(sql)
+                    if rw is not None:
+                        time_local = time.localtime(int(str(rw[6])))
+                        createBarrageDt = time.strftime("%Y-%m-%d %H:%M:%S", time_local)  # 发送弹幕时间
+                        rwid = rw[0]
+                        txt = "第几集：" + rw[1] +  "评论内容：" + rw[5] + "\n评论时间：" + createBarrageDt + "\t楼层：" + str(rw[7])
+
+                        updsql = "Insert into tmp(readid)values('" + str(rwid) + "')"
+                        self.dbHelper.executeSql(updsql)
+                        self.scr.insert(tk.INSERT, txt + "\n")
+                        self.scr.insert(tk.INSERT, "\n")
+                        self.scr.see(tk.INSERT)
 
             time.sleep(5)
 
