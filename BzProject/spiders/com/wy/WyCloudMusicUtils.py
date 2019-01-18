@@ -23,10 +23,18 @@ class WyCloudMusicUtils(object):
     def getHotRecommendApiUrl(self,hotid):
         host="https://music.163.com/weapi/v1/resource/comments/A_PL_0_"+str(hotid)+"?csrf_token="
         return host
+    #获取
+    def get_r_so_url(self,songID):
+        url="https://music.163.com/weapi/v1/resource/comments/R_SO_4_"+songID+"?csrf_token="
+        return url;
 
     #获取第一个URL
     def getDiscoverURL(self):
         url="https://music.163.com/discover"
+        return url
+    #获取歌词地址
+    def getLyricRUL(self):
+        url=self.getBaseURL()+"/weapi/song/lyric?csrf_token="
         return url
 
     #获取热门推荐 header
@@ -55,10 +63,18 @@ class WyCloudMusicUtils(object):
 
     #解析歌曲列表
     def getPlayMusicHotRecommend(self,items):
+        playUArr=[]
+        #播放地址：/song?id=256468
         for item in items:
             playurl=item.xpath("a/@href").extract()[0]
             playname=item.xpath("a/text()").extract()[0]
-            print(playname.encode("gbk", 'ignore').decode("gbk", "ignore"))
+            # print(playname.encode("gbk", 'ignore').decode("gbk", "ignore"))
+
+            #
+            playurldetail=self.getBaseURL()+playurl
+            print("播放地址：" + playurldetail)
+            playUArr.append(playurldetail)
+        return playUArr
 
 
     #读取评论
@@ -80,17 +96,22 @@ class WyCloudMusicUtils(object):
     #offset =0 评论页数-1
     #total=true  第一页是true 其他均为false
     #limit=20 一页显示20条评论
-    def get_fistParam(self,pagenum):
-        offset=pagenum-1
-        if pagenum>1:
-            total=False
-        elif
+    #crsftype:0 歌词  1 评论
+    def get_fistParam(self,pagenum,crsftype,songid):
+        if crsftype == "0":
+            first_param = "{id:"+str(songid)+", lv:\"-1\", tv:\"-1\", csrf_token:\"\"}"
+        elif crsftype == "1":
+            offset = (pagenum - 1)*20
+            if pagenum > 1:
+                total = "false"
+            elif pagenum == 1:  # 第一页时 total设置为true
+                total = "true"
+            first_param = "{rid:\"\", offset:" + str(offset) + ", total:" + total + ", limit:\"20\", csrf_token:\"\"}"
 
-        first_param = "{rid:\"\", offset:"+str(offset)+", total:"+total+", limit:\"20\", csrf_token:\"\"}"
         return first_param
 
-    def get_paramsSong(self,pagenum):
-        first_param=self.get_fistParam(pagenum)
+    def get_paramsSong(self,pagenum,crsftype,songid):
+        first_param=self.get_fistParam(pagenum,crsftype,songid)
         iv = "0102030405060708"
         first_key = self.forth_param
         second_key = 16 * 'F'
@@ -112,11 +133,11 @@ class WyCloudMusicUtils(object):
         return encrypt_text
 
     #评论解析
-    def crsf_comments(self,datas):
+    def crsf_comments(self,datas,playurl):
         sqlArr=[]
         sql="INSERT INTO answerwy(commentId,commentLocationType,content,isRemoveHotComment,liked,likedCount,parentCommentId," \
             "pendantData,repliedMark,showFloorComment,status,createtime,authStatus,avatarUrl,expertTags," \
-            "experts,locationInfo,nickname,remarkName,userId,userType,vipRights,vipType)" \
+            "experts,locationInfo,nickname,remarkName,userId,userType,vipType,playurl)" \
             "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
         for item in datas:
             params=[]
@@ -130,7 +151,10 @@ class WyCloudMusicUtils(object):
             liked=item['liked']
             likedCount=item['likedCount']
             parentCommentId=item['parentCommentId']
-            pendantData=item['pendantData']
+            pendantData = item['pendantData']
+            if pendantData is not None:
+                pendantData = item['pendantData']['imageUrl']
+
             repliedMark=item['repliedMark']
             showFloorComment=item['showFloorComment']
             status=item['status']
@@ -140,13 +164,25 @@ class WyCloudMusicUtils(object):
             authStatus=item['user']['authStatus']
             avatarUrl = item['user']['avatarUrl']
             expertTags = item['user']['expertTags']
-            experts = item['user']['experts']
+            usertags=None
+            if expertTags is not None:
+                lenTag = len(expertTags)
+                if lenTag != 0:
+                    usertags=','.join(expertTags)
+            experts = item['user']['experts']#dict
+            expertsstr=""
+            if experts is not None:
+                for val in experts.values():
+                    expertsstr=expertsstr+val+","
+
+
+
             locationInfo = item['user']['locationInfo']
             nickname = item['user']['nickname']
             remarkName = item['user']['remarkName']
             userId = item['user']['userId']
             userType = item['user']['userType']
-            vipRights = item['user']['vipRights']
+            # vipRights = item['user']['vipRights']
             vipType = item['user']['vipType']
             #参数
             params.append(commentId)
@@ -163,18 +199,21 @@ class WyCloudMusicUtils(object):
             params.append(time_str)
             params.append(authStatus)
             params.append(avatarUrl)
-            params.append(expertTags)
-            params.append(experts)
+            params.append(usertags)
+            params.append(expertsstr)
             params.append(locationInfo)
             params.append(nickname)
             params.append(remarkName)
             params.append(userId)
             params.append(userType)
-            params.append(vipRights)
+            # params.append(vipRights)
             params.append(vipType)
+            params.append(playurl)
             sqlArr.append(params)
             print("评论"+content.encode("gbk", 'ignore').decode("gbk", "ignore"))
-        self.dbhelper.executeSqlMany(sql,sqlArr)
+
+        self.dbhelper.executeSqlMany(sql, sqlArr)
+
 
     #计算页数 一页显示20条
     def calcuPageNum(self,totalpage):
