@@ -12,7 +12,7 @@ import sys
 import time
 
 
-# 登录UI页面
+# 登录UI页面2019-01-18
 class UILogin(object):
 
     helpers = DbHelpers()
