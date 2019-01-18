@@ -14,11 +14,18 @@ import threading
 from subprocess import Popen
 import subprocess
 from BzProject.spiders.com.wy.WyCloudMusic import WyCloudMusic
+from BzProject.spiders.com.RedisTools import RedisTools
+
 
 class StartSpider(object):
 
+    def __init__(self):
+        self.r=RedisTools().get_redis()
+
     def doCmd(self):
-        bzSpilder = BzClient()
+        doClient=self.r.get("client")
+
+        clientSpilder = BzClient()
         settings = get_project_settings()
         os.environ['SCRAPY_SETTINGS_MODULE'] = 'BzProject.settings'
         setting_module_path = os.environ['SCRAPY_SETTINGS_MODULE']
@@ -27,12 +34,14 @@ class StartSpider(object):
         # runner.crawl(bzSpilder)
         # reactor.run()
         crawler = CrawlerProcess(settings)#多线程时会报错  signal only works in main thread
-        crawler.crawl(bzSpilder)
+        crawler.crawl(clientSpilder)
         crawler.start()
 
     #解决点击按钮卡死问题
-    def sbProcess(self):
-        subprocess.Popen("scrapy crawl dk")
+    def sbProcess(self,client):
+        doClient = self.r.get("client")#测试redis
+        cmdstr=bytes.decode(client)
+        subprocess.Popen("scrapy crawl "+cmdstr)
 
     #开始网易云
     def startWyCloudMusicSpider(self):
